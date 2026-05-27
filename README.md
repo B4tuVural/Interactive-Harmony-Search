@@ -19,8 +19,25 @@ Harmony Search (HS) meta-sezgisel optimizasyon algoritmasını iki klasik benchm
 ## Kurulum
 
 ```bash
-git clone https://github.com/B4tuVural/Interactive-Harmony-Search
-cd Interactive-Harmony-Search
+git clone https://github.com/KULLANICI_ADI/harmony-search.git
+cd harmony-search
+```
+
+Sanal ortam oluşturun ve etkinleştirin:
+
+```bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# macOS / Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Bağımlılıkları yükleyin:
+
+```bash
 pip install -r requirements.txt
 ```
 
