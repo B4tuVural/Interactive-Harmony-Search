@@ -20,7 +20,7 @@ Harmony Search (HS) meta-sezgisel optimizasyon algoritmasını iki klasik benchm
 
 ```bash
 git clone https://github.com/B4tuVural/Interactive-Harmony-Search
-cd harmony-search
+cd Interactive-Harmony-Search
 ```
 
 Sanal ortam oluşturun ve etkinleştirin:
