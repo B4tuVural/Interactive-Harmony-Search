@@ -27,12 +27,12 @@ Sanal ortam oluşturun ve etkinleştirin:
 
 ```bash
 # Windows
-python -m venv venv
-venv\Scripts\activate
+python -m venv HS_venv
+HS_venv\Scripts\activate
 
 # macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv HS_venv
+source HS_venv/bin/activate
 ```
 
 Bağımlılıkları yükleyin:
