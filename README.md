@@ -1,5 +1,7 @@
 # 🎶 Harmony Search Algoritması — İnteraktif Benchmark Görselleştirici
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://interactive-harmony-search-ybv.streamlit.app/)
+
 Harmony Search (HS) meta-sezgisel optimizasyon algoritmasını iki klasik benchmark fonksiyonu üzerinde çalıştıran ve sonuçları interaktif 3D grafik ile gösteren bir Streamlit uygulaması.
 
 ## Özellikler
