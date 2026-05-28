@@ -65,7 +65,7 @@ def build_figure(X, Y, Z, floor_z, history, show_iter, best_harmony):
             camera=dict(eye=dict(x=-1.5, y=-1.5, z=1.2)),
         ),
         margin=dict(l=0, r=0, b=0, t=0),
-        height=520,
+        height=600,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
     )
@@ -97,6 +97,7 @@ st.markdown(
     """
     <style>
     .stApp { background-color: #1E2129; }
+    section[data-testid="stSidebar"] { overflow-y: auto; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -116,9 +117,6 @@ with st.sidebar:
     max_iter = st.slider("Maks. İterasyon", 100, 10000, 5000, 100)
     st.markdown("---")
     run_button = st.button("🚀 Optimizasyonu Başlat / Yenile", use_container_width=True)
-    st.markdown("---")
-    st.markdown("👀 **Tarama Adımlarını İncele**")
-    show_iter = st.slider("Gösterilecek İterasyon Aralığı", 1, max_iter, max_iter, 10)
 
 # --- Optimizasyon Çalıştırma ---
 cfg = BENCHMARK_CONFIG[benchmark_choice]
@@ -129,17 +127,26 @@ res = st.session_state.hs_results
 
 # --- Görselleştirme ---
 st.subheader("🔍 3D Arama Uzayı ve Tarama Geçmişi")
-col1, col2 = st.columns([1, 3])
 
-with col1:
-    st.success("🏆 **Algoritmanın Bulduğu Sonuç**")
+# Sonuç metrikleri — yatay 3 sütun
+st.success("🏆 **Algoritmanın Bulduğu Sonuç**")
+col_f, col_x, col_y = st.columns(3)
+with col_f:
     st.metric("En İyi f(x, y)", f"{res['best_fitness']:.5f}")
+with col_x:
     st.metric("Optimum x (x1)", f"{res['best_harmony'][0]:.5f}")
+with col_y:
     st.metric("Optimum y (x2)", f"{res['best_harmony'][1]:.5f}")
-    st.info(cfg["ideal_text"])
 
-with col2:
-    X, Y, Z = compute_surface(cfg["func"], cfg["bounds"])
-    floor_z = np.min(Z) + cfg["z_floor_offset"]
-    fig = build_figure(X, Y, Z, floor_z, res['history'], show_iter, res['best_harmony'])
-    st.plotly_chart(fig, use_container_width=True)
+# Teorik ideal — her zaman tam görünür
+st.info(cfg["ideal_text"])
+
+# İterasyon slider'ı
+st.markdown("👀 **Tarama Adımlarını İncele**")
+show_iter = st.slider("Gösterilecek İterasyon Aralığı", 1, max_iter, max_iter, 10)
+
+# Grafik — tam genişlik
+X, Y, Z = compute_surface(cfg["func"], cfg["bounds"])
+floor_z = np.min(Z) + cfg["z_floor_offset"]
+fig = build_figure(X, Y, Z, floor_z, res['history'], show_iter, res['best_harmony'])
+st.plotly_chart(fig, use_container_width=True)
