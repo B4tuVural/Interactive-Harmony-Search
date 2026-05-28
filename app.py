@@ -11,13 +11,13 @@ BENCHMARK_CONFIG = {
         "func": rosenbrock,
         "bounds": [(-5.0, 5.0), (-5.0, 5.0)],
         "z_floor_offset": 0,
-        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} = 0$ &nbsp;→&nbsp; konum: (1, 1)",
+        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} = 0$ &nbsp;→&nbsp; **(x,y)**: (1, 1)",
     },
     "Michalewicz": {
         "func": michalewicz,
         "bounds": [(0.0, np.pi), (0.0, np.pi)],
         "z_floor_offset": -0.1,
-        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} \\approx -1.801$ &nbsp;→&nbsp; konum: (2.20319, 1.57049)",
+        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} \\approx -1.801$ &nbsp;→&nbsp; **(x,y)**: (2.20319, 1.57049)",
     },
 }
 
