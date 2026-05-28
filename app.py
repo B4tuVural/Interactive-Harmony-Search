@@ -28,53 +28,84 @@ NO_SCROLL_CSS = """
 
 /* Ana içerik alanı — padding sıfırla */
 .block-container {
-    padding-top: 0.6rem !important;
+    padding-top: 0.5rem !important;
     padding-bottom: 0rem !important;
-    padding-left: 1.2rem !important;
-    padding-right: 1.2rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
     max-width: 100% !important;
 }
 
-/* Başlık boşluğunu küçült */
-h1 { margin-top: 0 !important; margin-bottom: 0.15rem !important; font-size: 1.4rem !important; }
-h3 { margin-top: 0.3rem !important; margin-bottom: 0.3rem !important; font-size: 1rem !important; }
+/* Başlık — tek satıra sığdır, küçük font */
+h1 {
+    margin-top: 0 !important;
+    margin-bottom: 0.2rem !important;
+    font-size: 1.25rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+h3 { margin-top: 0.2rem !important; margin-bottom: 0.25rem !important; font-size: 0.95rem !important; }
 
-/* Metrikler arası boşluk */
+/* Metrikler */
 [data-testid="stMetric"] {
     background: #262730;
     border-radius: 8px;
-    padding: 0.4rem 0.6rem !important;
+    padding: 0.35rem 0.5rem !important;
 }
-[data-testid="stMetricLabel"] { font-size: 0.75rem !important; }
-[data-testid="stMetricValue"] { font-size: 1.3rem !important; }
+[data-testid="stMetricLabel"] { font-size: 0.72rem !important; }
+[data-testid="stMetricValue"] { font-size: 1.2rem !important; }
 
 /* Alert/info/success kutuları */
 [data-testid="stAlert"] {
-    padding: 0.4rem 0.7rem !important;
-    margin-bottom: 0.4rem !important;
+    padding: 0.35rem 0.6rem !important;
+    margin-bottom: 0.3rem !important;
 }
 
-/* Slider label */
-[data-testid="stSlider"] { margin-bottom: 0.1rem !important; }
-.stSlider > label { font-size: 0.8rem !important; }
+/* Slider */
+[data-testid="stSlider"] { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+.stSlider > label { font-size: 0.78rem !important; margin-bottom: 0 !important; }
 
 /* Paragraf boşlukları */
-p { margin-bottom: 0.2rem !important; }
+p { margin-bottom: 0.15rem !important; }
 
-/* Sidebar scroll */
-section[data-testid="stSidebar"] { overflow-y: auto; }
-section[data-testid="stSidebar"] .block-container {
-    padding-top: 1rem !important;
+/* ── SİDEBAR ── */
+section[data-testid="stSidebar"] {
+    overflow-y: auto;
+}
+/* Sidebar iç blok */
+section[data-testid="stSidebar"] > div:first-child {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.5rem !important;
+}
+/* Sidebar başlık */
+section[data-testid="stSidebar"] h2 {
+    font-size: 1rem !important;
+    margin-bottom: 0.3rem !important;
+    margin-top: 0 !important;
+}
+/* Sidebar her element arası boşluk */
+section[data-testid="stSidebar"] .element-container {
+    margin-bottom: 0.15rem !important;
+}
+/* Sidebar slider label */
+section[data-testid="stSidebar"] .stSlider > label {
+    font-size: 0.78rem !important;
+}
+/* Sidebar hr */
+section[data-testid="stSidebar"] hr {
+    margin-top: 0.4rem !important;
+    margin-bottom: 0.4rem !important;
+}
+/* Sidebar selectbox */
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] {
+    margin-bottom: 0 !important;
 }
 
-/* Plotly grafik margin */
+/* Plotly grafik */
 .js-plotly-plot { margin-top: 0 !important; }
 
-/* Genel element boşlukları */
-.element-container { margin-bottom: 0.3rem !important; }
-
-/* Subheader */
-.stMarkdown h3 { font-size: 0.95rem !important; }
+/* Genel element boşlukları (ana alan) */
+.block-container > div > .element-container { margin-bottom: 0.25rem !important; }
 </style>
 """
 
@@ -179,7 +210,7 @@ if run_button or needs_run(benchmark_choice):
 res = st.session_state.hs_results
 
 # ── Başlık ──────────────────────────────────────────────────────────────
-st.title("🎶 Harmony Search (HS) Algoritması — Benchmark Testleri")
+st.title("🎶 Harmony Search (HS) — Benchmark Testleri")
 
 # ── Sol panel (metrikler + bilgi + slider) | Sağ panel (grafik) ─────────
 left, right = st.columns([1, 2.6], gap="medium")
