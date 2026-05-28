@@ -28,7 +28,7 @@ NO_SCROLL_CSS = """
 
 /* Ana içerik alanı — padding sıfırla */
 .block-container {
-    padding-top: 0.5rem !important;
+    padding-top: 2.8rem !important;
     padding-bottom: 0rem !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
@@ -41,8 +41,8 @@ h1 {
     margin-bottom: 0.2rem !important;
     font-size: 1.25rem !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    
+    
 }
 h3 { margin-top: 0.2rem !important; margin-bottom: 0.25rem !important; font-size: 0.95rem !important; }
 
