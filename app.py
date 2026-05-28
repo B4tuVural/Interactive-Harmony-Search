@@ -11,15 +11,72 @@ BENCHMARK_CONFIG = {
         "func": rosenbrock,
         "bounds": [(-5.0, 5.0), (-5.0, 5.0)],
         "z_floor_offset": 0,
-        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} = 0$ konum:&nbsp;(1,&nbsp;1)",
+        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} = 0$ &nbsp;→&nbsp; konum: (1, 1)",
     },
     "Michalewicz": {
         "func": michalewicz,
         "bounds": [(0.0, np.pi), (0.0, np.pi)],
         "z_floor_offset": -0.1,
-        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} \\approx -1.801$ konum:&nbsp;(2.20319,&nbsp;1.57049)",
+        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} \\approx -1.801$ &nbsp;→&nbsp; konum: (2.20319, 1.57049)",
     },
 }
+
+NO_SCROLL_CSS = """
+<style>
+/* Genel arka plan */
+.stApp { background-color: #1E2129; }
+
+/* Ana içerik alanı — padding sıfırla */
+.block-container {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0rem !important;
+    padding-left: 1.2rem !important;
+    padding-right: 1.2rem !important;
+    max-width: 100% !important;
+}
+
+/* Başlık boşluğunu küçült */
+h1 { margin-top: 0 !important; margin-bottom: 0.15rem !important; font-size: 1.4rem !important; }
+h3 { margin-top: 0.3rem !important; margin-bottom: 0.3rem !important; font-size: 1rem !important; }
+
+/* Metrikler arası boşluk */
+[data-testid="stMetric"] {
+    background: #262730;
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem !important;
+}
+[data-testid="stMetricLabel"] { font-size: 0.75rem !important; }
+[data-testid="stMetricValue"] { font-size: 1.3rem !important; }
+
+/* Alert/info/success kutuları */
+[data-testid="stAlert"] {
+    padding: 0.4rem 0.7rem !important;
+    margin-bottom: 0.4rem !important;
+}
+
+/* Slider label */
+[data-testid="stSlider"] { margin-bottom: 0.1rem !important; }
+.stSlider > label { font-size: 0.8rem !important; }
+
+/* Paragraf boşlukları */
+p { margin-bottom: 0.2rem !important; }
+
+/* Sidebar scroll */
+section[data-testid="stSidebar"] { overflow-y: auto; }
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 1rem !important;
+}
+
+/* Plotly grafik margin */
+.js-plotly-plot { margin-top: 0 !important; }
+
+/* Genel element boşlukları */
+.element-container { margin-bottom: 0.3rem !important; }
+
+/* Subheader */
+.stMarkdown h3 { font-size: 0.95rem !important; }
+</style>
+"""
 
 
 # --- Yardımcı Fonksiyonlar ---
@@ -59,15 +116,21 @@ def build_figure(X, Y, Z, floor_z, history, show_iter, best_harmony):
 
     fig.update_layout(
         scene=dict(
-            xaxis_title='X Ekseni',
-            yaxis_title='Y Ekseni',
-            zaxis_title='f(x, y)',
+            xaxis_title='X',
+            yaxis_title='Y',
+            zaxis_title='f(x,y)',
             camera=dict(eye=dict(x=-1.5, y=-1.5, z=1.2)),
         ),
         margin=dict(l=0, r=0, b=0, t=0),
-        height=600,
+        height=480,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
+        legend=dict(
+            orientation="h",
+            yanchor="bottom", y=1.01,
+            xanchor="right", x=1,
+            font=dict(size=11),
+        ),
     )
     return fig
 
@@ -93,17 +156,7 @@ def run_optimization(cfg, benchmark_choice, hms, r_accept, r_pa, bw, max_iter):
 
 # --- Sayfa Yapılandırması ---
 st.set_page_config(page_title="Harmony Search Optimizasyonu", layout="wide")
-st.markdown(
-    """
-    <style>
-    .stApp { background-color: #1E2129; }
-    section[data-testid="stSidebar"] { overflow-y: auto; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-st.title("🎶 Harmony Search (HS) Algoritması Benchmark Testleri")
-st.markdown("Bu uygulama, `.mlx` benzeri interaktif kontrollerle **Harmony Search** algoritmasının arama uzayını nasıl taradığını simüle eder.")
+st.markdown(NO_SCROLL_CSS, unsafe_allow_html=True)
 
 # --- Yan Menü ---
 with st.sidebar:
@@ -125,28 +178,41 @@ if run_button or needs_run(benchmark_choice):
 
 res = st.session_state.hs_results
 
-# --- Görselleştirme ---
-st.subheader("🔍 3D Arama Uzayı ve Tarama Geçmişi")
+# ── Başlık ──────────────────────────────────────────────────────────────
+st.title("🎶 Harmony Search (HS) Algoritması — Benchmark Testleri")
 
-# Sonuç metrikleri — yatay 3 sütun
-st.success("🏆 **Algoritmanın Bulduğu Sonuç**")
-col_f, col_x, col_y = st.columns(3)
-with col_f:
-    st.metric("En İyi f(x, y)", f"{res['best_fitness']:.5f}")
-with col_x:
-    st.metric("Optimum x (x1)", f"{res['best_harmony'][0]:.5f}")
-with col_y:
-    st.metric("Optimum y (x2)", f"{res['best_harmony'][1]:.5f}")
+# ── Sol panel (metrikler + bilgi + slider) | Sağ panel (grafik) ─────────
+left, right = st.columns([1, 2.6], gap="medium")
 
-# Teorik ideal — her zaman tam görünür
-st.info(cfg["ideal_text"])
+with left:
+    st.subheader("🏆 Algoritmanın Bulduğu Sonuç")
 
-# İterasyon slider'ı
-st.markdown("👀 **Tarama Adımlarını İncele**")
-show_iter = st.slider("Gösterilecek İterasyon Aralığı", 1, max_iter, max_iter, 10)
+    m1, m2, m3 = st.columns(3)
+    m1.metric("f(x,y)", f"{res['best_fitness']:.5f}")
+    m2.metric("x₁", f"{res['best_harmony'][0]:.5f}")
+    m3.metric("x₂", f"{res['best_harmony'][1]:.5f}")
 
-# Grafik — tam genişlik
-X, Y, Z = compute_surface(cfg["func"], cfg["bounds"])
-floor_z = np.min(Z) + cfg["z_floor_offset"]
-fig = build_figure(X, Y, Z, floor_z, res['history'], show_iter, res['best_harmony'])
-st.plotly_chart(fig, use_container_width=True)
+    st.info(cfg["ideal_text"])
+
+    st.markdown("---")
+    st.markdown("👀 **Tarama Adımlarını İncele**")
+    show_iter = st.slider(
+        "Gösterilecek İterasyon",
+        min_value=1,
+        max_value=max_iter,
+        value=max_iter,
+        step=10,
+    )
+
+    st.markdown("---")
+    st.caption(
+        "Bu uygulama `.mlx` benzeri interaktif kontrollerle "
+        "**Harmony Search** algoritmasının arama uzayını nasıl taradığını simüle eder."
+    )
+
+with right:
+    st.subheader("🔍 3D Arama Uzayı ve Tarama Geçmişi")
+    X, Y, Z = compute_surface(cfg["func"], cfg["bounds"])
+    floor_z  = np.min(Z) + cfg["z_floor_offset"]
+    fig = build_figure(X, Y, Z, floor_z, res['history'], show_iter, res['best_harmony'])
+    st.plotly_chart(fig, use_container_width=True)
