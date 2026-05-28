@@ -65,7 +65,7 @@ def build_figure(X, Y, Z, floor_z, history, show_iter, best_harmony):
             camera=dict(eye=dict(x=-1.5, y=-1.5, z=1.2)),
         ),
         margin=dict(l=0, r=0, b=0, t=0),
-        height=600,
+        height=520,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
     )
@@ -116,6 +116,9 @@ with st.sidebar:
     max_iter = st.slider("Maks. İterasyon", 100, 10000, 5000, 100)
     st.markdown("---")
     run_button = st.button("🚀 Optimizasyonu Başlat / Yenile", use_container_width=True)
+    st.markdown("---")
+    st.markdown("👀 **Tarama Adımlarını İncele**")
+    show_iter = st.slider("Gösterilecek İterasyon Aralığı", 1, max_iter, max_iter, 10)
 
 # --- Optimizasyon Çalıştırma ---
 cfg = BENCHMARK_CONFIG[benchmark_choice]
@@ -134,9 +137,6 @@ with col1:
     st.metric("Optimum x (x1)", f"{res['best_harmony'][0]:.5f}")
     st.metric("Optimum y (x2)", f"{res['best_harmony'][1]:.5f}")
     st.info(cfg["ideal_text"])
-    st.markdown("---")
-    st.markdown("👀 **Tarama Adımlarını İncele**")
-    show_iter = st.slider("Gösterilecek İterasyon Aralığı", 1, max_iter, max_iter, 10)
 
 with col2:
     X, Y, Z = compute_surface(cfg["func"], cfg["bounds"])
