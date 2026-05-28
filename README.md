@@ -1,5 +1,7 @@
 # 🎶 Harmony Search Algoritması — İnteraktif Benchmark Görselleştirici
 
+[![Open in Streamlit](https://raw.githubusercontent.com/github/explore/968d1eb8fb6b704c6be917f0000283face4f33ee/topics/streamlit/streamlit.png)](https://interactive-harmony-search-ybv.streamlit.app/)
+
 Harmony Search (HS) meta-sezgisel optimizasyon algoritmasını iki klasik benchmark fonksiyonu üzerinde çalıştıran ve sonuçları interaktif 3D grafik ile gösteren bir Streamlit uygulaması.
 
 ## Özellikler
@@ -21,6 +23,23 @@ Harmony Search (HS) meta-sezgisel optimizasyon algoritmasını iki klasik benchm
 ```bash
 git clone https://github.com/B4tuVural/Interactive-Harmony-Search
 cd Interactive-Harmony-Search
+```
+
+Sanal ortam oluşturun ve etkinleştirin:
+
+```bash
+# Windows
+python -m venv HS_venv
+HS_venv\Scripts\activate
+
+# macOS / Linux
+python3 -m venv HS_venv
+source HS_venv/bin/activate
+```
+
+Bağımlılıkları yükleyin:
+
+```bash
 pip install -r requirements.txt
 ```
 
