@@ -1,117 +1,99 @@
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
-from utils import HarmonySearch, rosenbrock, michalewicz
+from utils import (
+    HarmonySearch, PSO, GA,
+    rosenbrock, michalewicz,
+)
 
 # --- Sabitler ---
 GRID_SIZE = 60
 
+# =====================================================================
+#  BENCHMARK FONKSİYONLARI (tüm algoritmalar ortak kullanır)
+# =====================================================================
 BENCHMARK_CONFIG = {
     "Logaritmik Rosenbrock": {
         "func": rosenbrock,
         "bounds": [(-5.0, 5.0), (-5.0, 5.0)],
         "z_floor_offset": 0,
-        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} = 0$ &nbsp;→&nbsp; **(x,y)**: (1, 1)",
+        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} = 0$ konum:&nbsp;(1,&nbsp;1)",
     },
     "Michalewicz": {
         "func": michalewicz,
         "bounds": [(0.0, np.pi), (0.0, np.pi)],
         "z_floor_offset": -0.1,
-        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} \\approx -1.801$ &nbsp;→&nbsp; **(x,y)**: (2.20319, 1.57049)",
+        "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} \\approx -1.801$ konum:&nbsp;(2.20319,&nbsp;1.57049)",
     },
 }
 
-NO_SCROLL_CSS = """
-<style>
-/* Genel arka plan */
-.stApp { background-color: #1E2129; }
-
-/* Ana içerik alanı — padding sıfırla */
-.block-container {
-    padding-top: 2.8rem !important;
-    padding-bottom: 0rem !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-    max-width: 100% !important;
-}
-
-/* Başlık — tek satıra sığdır, küçük font */
-h1 {
-    margin-top: 0 !important;
-    margin-bottom: 0.2rem !important;
-    font-size: 1.25rem !important;
-    white-space: nowrap !important;
-    
-    
-}
-h3 { margin-top: 0.2rem !important; margin-bottom: 0.25rem !important; font-size: 0.95rem !important; }
-
-/* Metrikler */
-[data-testid="stMetric"] {
-    background: #262730;
-    border-radius: 8px;
-    padding: 0.35rem 0.5rem !important;
-}
-[data-testid="stMetricLabel"] { font-size: 0.72rem !important; }
-[data-testid="stMetricValue"] { font-size: 1.2rem !important; }
-
-/* Alert/info/success kutuları */
-[data-testid="stAlert"] {
-    padding: 0.35rem 0.6rem !important;
-    margin-bottom: 0.3rem !important;
-}
-
-/* Slider */
-[data-testid="stSlider"] { margin-bottom: 0 !important; padding-bottom: 0 !important; }
-.stSlider > label { font-size: 0.78rem !important; margin-bottom: 0 !important; }
-
-/* Paragraf boşlukları */
-p { margin-bottom: 0.15rem !important; }
-
-/* ── SİDEBAR ── */
-section[data-testid="stSidebar"] {
-    overflow-y: auto;
-}
-/* Sidebar iç blok */
-section[data-testid="stSidebar"] > div:first-child {
-    padding-top: 0.6rem !important;
-    padding-bottom: 0.5rem !important;
-}
-/* Sidebar başlık */
-section[data-testid="stSidebar"] h2 {
-    font-size: 1rem !important;
-    margin-bottom: 0.3rem !important;
-    margin-top: 0 !important;
-}
-/* Sidebar her element arası boşluk */
-section[data-testid="stSidebar"] .element-container {
-    margin-bottom: 0.15rem !important;
-}
-/* Sidebar slider label */
-section[data-testid="stSidebar"] .stSlider > label {
-    font-size: 0.78rem !important;
-}
-/* Sidebar hr */
-section[data-testid="stSidebar"] hr {
-    margin-top: 0.4rem !important;
-    margin-bottom: 0.4rem !important;
-}
-/* Sidebar selectbox */
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] {
-    margin-bottom: 0 !important;
-}
-
-/* Plotly grafik */
-.js-plotly-plot { margin-top: 0 !important; }
-
-/* Genel element boşlukları (ana alan) */
-.block-container > div > .element-container { margin-bottom: 0.25rem !important; }
-</style>
-"""
+# =====================================================================
+#  ALGORİTMA KONFİGÜRASYONLARI
+#  Her algoritma için: solver fonksiyonu, parametre tanımları (slider),
+#  ve solver'ı çağıran "runner" fonksiyonu.
+#  Parametre tanımı: (anahtar, etiket, min, max, varsayılan, adım)
+#  Sayı tipleri (int/float) slider tipini belirler.
+# =====================================================================
+def _run_hs(func, bounds, p):
+    return HarmonySearch(func, bounds, p["hms"], p["r_accept"], p["r_pa"], p["bw"], p["max_iter"])
 
 
-# --- Yardımcı Fonksiyonlar ---
-def compute_surface(obj_func, bounds):
+def _run_pso(func, bounds, p):
+    return PSO(func, bounds, p["pop_size"], p["max_iter"], p["c1"], p["c2"], p["w"])
+
+
+def _run_ga(func, bounds, p):
+    return GA(func, bounds, p["pop_size"], p["max_iter"], p["crossover_rate"], p["mutation_rate"])
+
+
+ALGO_CONFIG = {
+    "HS": {
+        "label": "🎶 Harmony Search",
+        "desc": "Müzikal doğaçlamadan esinlenen, hafıza tabanlı bir arama algoritması.",
+        "runner": _run_hs,
+        "params": [
+            ("hms",      "Harmony Memory Size (HMS)",   10,   100,   20,   5),
+            ("r_accept", "Accept Rate (r_accept)",      0.1,  1.0,   0.85, 0.05),
+            ("r_pa",     "Pitch Adjusting Rate (r_pa)", 0.1,  1.0,   0.5,  0.05),
+            ("bw",       "Bandwidth (bw)",              0.01, 1.0,   0.12, 0.01),
+            ("max_iter", "Maks. İterasyon",             100,  10000, 5000, 100),
+        ],
+    },
+    "PSO": {
+        "label": "🐦 Particle Swarm",
+        "desc": "Sürü zekâsı; parçacıklar kişisel ve global en iyiye doğru hareket eder.",
+        "runner": _run_pso,
+        "params": [
+            ("pop_size", "Sürü Boyutu (pop_size)",   10,  100,  50,  5),
+            ("max_iter", "Maks. İterasyon",           50,  500,  150, 10),
+            ("c1",       "Bilişsel Katsayı (c1)",     0.0, 4.0,  1.5, 0.1),
+            ("c2",       "Sosyal Katsayı (c2)",       0.0, 4.0,  1.5, 0.1),
+            ("w",        "Atalet Ağırlığı (w)",       0.0, 1.5,  0.7, 0.05),
+        ],
+    },
+    "GA": {
+        "label": "🧬 Genetic Algorithm",
+        "desc": "Doğal seçilim; turnuva seçilimi, aritmetik çaprazlama ve mutasyon.",
+        "runner": _run_ga,
+        "params": [
+            ("pop_size",       "Popülasyon Boyutu (pop_size)", 10,  100, 50,  2),
+            ("max_iter",       "Jenerasyon Sayısı",            20,  500, 100, 10),
+            ("crossover_rate", "Çaprazlama Oranı",             0.1, 1.0, 0.9, 0.05),
+            ("mutation_rate",  "Mutasyon Oranı",               0.0, 1.0, 0.1, 0.05),
+        ],
+    },
+}
+
+
+# =====================================================================
+#  YARDIMCI FONKSİYONLAR
+# =====================================================================
+@st.cache_data(show_spinner=False)
+def compute_surface(benchmark_choice):
+    """Yüzeyi benchmark adına göre hesaplar ve önbelleğe alır."""
+    cfg = BENCHMARK_CONFIG[benchmark_choice]
+    obj_func = cfg["func"]
+    bounds = cfg["bounds"]
     x = np.linspace(bounds[0][0], bounds[0][1], GRID_SIZE)
     y = np.linspace(bounds[1][0], bounds[1][1], GRID_SIZE)
     X, Y = np.meshgrid(x, y)
@@ -119,7 +101,7 @@ def compute_surface(obj_func, bounds):
     return X, Y, Z
 
 
-def build_figure(X, Y, Z, floor_z, history, show_iter, best_harmony):
+def build_figure(X, Y, Z, floor_z, history, show_iter, best_pos):
     sliced = history[:show_iter]
     fig = go.Figure()
 
@@ -138,7 +120,7 @@ def build_figure(X, Y, Z, floor_z, history, show_iter, best_harmony):
         name='Arama Geçmişi',
     ))
     fig.add_trace(go.Scatter3d(
-        x=[best_harmony[0]], y=[best_harmony[1]],
+        x=[best_pos[0]], y=[best_pos[1]],
         z=[floor_z],
         mode='markers',
         marker=dict(size=15, color='red', symbol='cross', line=dict(color='white', width=2)),
@@ -147,103 +129,139 @@ def build_figure(X, Y, Z, floor_z, history, show_iter, best_harmony):
 
     fig.update_layout(
         scene=dict(
-            xaxis_title='X',
-            yaxis_title='Y',
-            zaxis_title='f(x,y)',
+            xaxis_title='X Ekseni',
+            yaxis_title='Y Ekseni',
+            zaxis_title='f(x, y)',
             camera=dict(eye=dict(x=-1.5, y=-1.5, z=1.2)),
         ),
         margin=dict(l=0, r=0, b=0, t=0),
-        height=480,
+        height=600,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        legend=dict(
-            orientation="h",
-            yanchor="bottom", y=1.01,
-            xanchor="right", x=1,
-            font=dict(size=11),
-        ),
     )
     return fig
 
 
-def needs_run(benchmark_choice):
-    if "hs_results" not in st.session_state:
-        return True
-    return st.session_state.hs_results.get('benchmark') != benchmark_choice
+def render_params(algo_key, algo_cfg):
+    """Algoritmanın parametre slider'larını çizer ve değerleri döndürür."""
+    params = {}
+    specs = algo_cfg["params"]
+    cols = st.columns(len(specs))
+    for col, (key, label, lo, hi, default, step) in zip(cols, specs):
+        with col:
+            params[key] = st.slider(
+                label, lo, hi, default, step,
+                key=f"{algo_key}_{key}",
+            )
+    return params
 
 
-def run_optimization(cfg, benchmark_choice, hms, r_accept, r_pa, bw, max_iter):
-    with st.spinner(f'{benchmark_choice} için optimizasyon hesaplanıyor...'):
-        best_fitness, best_harmony, history = HarmonySearch(
-            cfg["func"], cfg["bounds"], hms, r_accept, r_pa, bw, max_iter
+def make_signature(benchmark_choice, params):
+    """Optimizasyonun yeniden çalışması gerekip gerekmediğini belirleyen imza."""
+    return (benchmark_choice, tuple(sorted(params.items())))
+
+
+# =====================================================================
+#  SEKME (TAB) İÇERİĞİ
+# =====================================================================
+def render_algorithm_tab(algo_key):
+    algo_cfg = ALGO_CONFIG[algo_key]
+    state_key = f"{algo_key}_results"
+
+    st.markdown(f"### {algo_cfg['label']}")
+    st.caption(algo_cfg["desc"])
+
+    # --- Benchmark seçimi (diğer algoritmalardaki gibi dropdown) ---
+    top_left, top_right = st.columns([2, 3])
+    with top_left:
+        benchmark_choice = st.selectbox(
+            "Benchmark Fonksiyonu Seçin",
+            list(BENCHMARK_CONFIG.keys()),
+            key=f"{algo_key}_benchmark",
         )
-    st.session_state.hs_results = {
-        'best_fitness': best_fitness,
-        'best_harmony': best_harmony,
-        'history': history,
-        'benchmark': benchmark_choice,
-    }
+    cfg = BENCHMARK_CONFIG[benchmark_choice]
 
+    # --- Algoritma parametreleri ---
+    with st.expander("⚙️ Algoritma Parametreleri", expanded=True):
+        params = render_params(algo_key, algo_cfg)
+        run_button = st.button(
+            "🎲 Yeniden Çalıştır (yeni rastgele başlangıç)",
+            key=f"{algo_key}_run",
+            use_container_width=True,
+        )
 
-# --- Sayfa Yapılandırması ---
-st.set_page_config(page_title="Harmony Search Optimizasyonu", layout="wide")
-st.markdown(NO_SCROLL_CSS, unsafe_allow_html=True)
+    # --- Optimizasyon çalıştırma (imza değişti veya buton basıldıysa) ---
+    signature = make_signature(benchmark_choice, params)
+    prev = st.session_state.get(state_key)
+    needs_run = (prev is None) or (prev.get("signature") != signature) or run_button
 
-# --- Yan Menü ---
-with st.sidebar:
-    st.header("⚙️ HS Parametreleri")
-    benchmark_choice = st.selectbox("Benchmark Fonksiyonu Seçin", list(BENCHMARK_CONFIG.keys()))
-    st.markdown("---")
-    hms      = st.slider("Harmony Memory Size (HMS)", 10, 100, 20, 5)
-    r_accept = st.slider("Accept Rate (r_accept)", 0.1, 1.0, 0.85, 0.05)
-    r_pa     = st.slider("Pitch Adjusting Rate (r_pa)", 0.1, 1.0, 0.5, 0.05)
-    bw       = st.slider("Bandwidth (bw)", 0.01, 1.0, 0.15, 0.01)
-    max_iter = st.slider("Maks. İterasyon", 100, 10000, 5000, 100)
-    st.markdown("---")
-    run_button = st.button("🚀 Optimizasyonu Başlat / Yenile", use_container_width=True)
+    if needs_run:
+        with st.spinner(f"{algo_cfg['label']} • {benchmark_choice} için optimizasyon hesaplanıyor..."):
+            best_fitness, best_pos, history = algo_cfg["runner"](cfg["func"], cfg["bounds"], params)
+        st.session_state[state_key] = {
+            "best_fitness": best_fitness,
+            "best_pos": best_pos,
+            "history": history,
+            "benchmark": benchmark_choice,
+            "signature": signature,
+        }
 
-# --- Optimizasyon Çalıştırma ---
-cfg = BENCHMARK_CONFIG[benchmark_choice]
-if run_button or needs_run(benchmark_choice):
-    run_optimization(cfg, benchmark_choice, hms, r_accept, r_pa, bw, max_iter)
+    res = st.session_state[state_key]
 
-res = st.session_state.hs_results
-
-# ── Başlık ──────────────────────────────────────────────────────────────
-st.title("🎶 Harmony Search (HS) — Benchmark Testleri")
-
-# ── Sol panel (metrikler + bilgi + slider) | Sağ panel (grafik) ─────────
-left, right = st.columns([1, 2.6], gap="medium")
-
-with left:
-    st.subheader("🏆 Algoritmanın Bulduğu Sonuç")
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("f(x,y)", f"{res['best_fitness']:.5f}")
-    m2.metric("x₁", f"{res['best_harmony'][0]:.5f}")
-    m3.metric("x₂", f"{res['best_harmony'][1]:.5f}")
-
-    st.info(cfg["ideal_text"])
-
-    st.markdown("---")
-    st.markdown("👀 **Tarama Adımlarını İncele**")
-    show_iter = st.slider(
-        "Gösterilecek İterasyon",
-        min_value=1,
-        max_value=max_iter,
-        value=max_iter,
-        step=10,
-    )
-
-    st.markdown("---")
-    st.caption(
-        "Bu uygulama `.mlx` benzeri interaktif kontrollerle "
-        "**Harmony Search** algoritmasının arama uzayını nasıl taradığını simüle eder."
-    )
-
-with right:
+    # --- Görselleştirme ---
     st.subheader("🔍 3D Arama Uzayı ve Tarama Geçmişi")
-    X, Y, Z = compute_surface(cfg["func"], cfg["bounds"])
-    floor_z  = np.min(Z) + cfg["z_floor_offset"]
-    fig = build_figure(X, Y, Z, floor_z, res['history'], show_iter, res['best_harmony'])
-    st.plotly_chart(fig, use_container_width=True)
+    col1, col2 = st.columns([1, 3])
+
+    total_steps = len(res["history"])
+    with col1:
+        st.success("🏆 **Algoritmanın Bulduğu Sonuç**")
+        st.metric("En İyi f(x, y)", f"{res['best_fitness']:.5f}")
+        st.metric("Optimum x (x1)", f"{res['best_pos'][0]:.5f}")
+        st.metric("Optimum y (x2)", f"{res['best_pos'][1]:.5f}")
+        st.info(cfg["ideal_text"])
+        st.markdown("---")
+        st.markdown("👀 **Tarama Adımlarını İncele**")
+        step = max(1, total_steps // 100)
+        show_iter = st.slider(
+            "Gösterilecek Adım Sayısı",
+            1, total_steps, total_steps, step,
+            key=f"{algo_key}_show",
+            help="Algoritmanın değerlendirdiği toplam aday nokta sayısı üzerinden ilerler.",
+        )
+        st.caption(f"Toplam değerlendirilen aday nokta: **{total_steps}**")
+
+    with col2:
+        X, Y, Z = compute_surface(benchmark_choice)
+        floor_z = np.min(Z) + cfg["z_floor_offset"]
+        fig = build_figure(X, Y, Z, floor_z, res["history"], show_iter, res["best_pos"])
+        st.plotly_chart(fig, use_container_width=True, key=f"{algo_key}_plot")
+
+
+# =====================================================================
+#  SAYFA YAPILANDIRMASI
+# =====================================================================
+st.set_page_config(page_title="Metasezgisel Optimizasyon Benchmark", layout="wide")
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #1E2129; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+st.title("🧠 Metasezgisel Optimizasyon Algoritmaları • Benchmark Testleri")
+st.markdown(
+    "Aşağıdaki **sekmeler** arasında geçiş yaparak farklı optimizasyon "
+    "algoritmalarının (HS, PSO, GA) arama uzayını nasıl taradığını "
+    "karşılaştırabilirsiniz. Her sekmede benchmark fonksiyonunu ve algoritma "
+    "parametrelerini bağımsız olarak ayarlayabilirsiniz."
+)
+
+# --- Sekmeler (web tarayıcı sekmeleri gibi algoritma geçişi) ---
+tab_keys = list(ALGO_CONFIG.keys())
+tab_labels = [ALGO_CONFIG[k]["label"] for k in tab_keys]
+tabs = st.tabs(tab_labels)
+
+for tab, algo_key in zip(tabs, tab_keys):
+    with tab:
+        render_algorithm_tab(algo_key)
