@@ -249,7 +249,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.title("🧠 Metasezgisel Optimizasyon Algoritmaları • Benchmark Testleri")
+st.title("Metaheuristic Optimizasyon Algoritmaları • Benchmark Testleri")
 st.markdown(
     "Aşağıdaki **sekmeler** arasında geçiş yaparak farklı optimizasyon "
     "algoritmalarının (HS, PSO, GA) arama uzayını nasıl taradığını "
