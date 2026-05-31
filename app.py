@@ -240,7 +240,7 @@ def render_algorithm_tab(algo_key):
 # =====================================================================
 #  SAYFA YAPILANDIRMASI
 # =====================================================================
-st.set_page_config(page_title="Metasezgisel Optimizasyon Benchmark", layout="wide")
+st.set_page_config(page_title="Metaheuristic Optimizasyon Benchmark", layout="wide")
 st.markdown(
     """
     <style>
