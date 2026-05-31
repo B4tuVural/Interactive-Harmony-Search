@@ -1,5 +1,9 @@
+import contextlib
+import io
+
 import streamlit as st
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from utils import (
     HarmonySearch, PSO, GA,
@@ -17,12 +21,16 @@ BENCHMARK_CONFIG = {
         "func": rosenbrock,
         "bounds": [(-5.0, 5.0), (-5.0, 5.0)],
         "z_floor_offset": 0,
+        "target": 0.0,                 # Ulaşılmak istenen f_min
+        "opt_pos": (1.0, 1.0),         # Teorik optimum konum
         "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} = 0$ konum:&nbsp;(1,&nbsp;1)",
     },
     "Michalewicz": {
         "func": michalewicz,
         "bounds": [(0.0, np.pi), (0.0, np.pi)],
         "z_floor_offset": -0.1,
+        "target": -1.8013,             # Ulaşılmak istenen f_min
+        "opt_pos": (2.20319, 1.57049), # Teorik optimum konum
         "ideal_text": "**Teorik İdeal Çözüm:** $f_{min} \\approx -1.801$ konum:&nbsp;(2.20319,&nbsp;1.57049)",
     },
 }
@@ -55,7 +63,7 @@ ALGO_CONFIG = {
             ("hms",      "Harmony Memory Size (HMS)",   10,   100,   20,   5),
             ("r_accept", "Accept Rate (r_accept)",      0.1,  1.0,   0.85, 0.05),
             ("r_pa",     "Pitch Adjusting Rate (r_pa)", 0.1,  1.0,   0.5,  0.05),
-            ("bw",       "Bandwidth (bw)",              0.01, 1.0,   0.12, 0.01),
+            ("bw",       "Bandwidth (bw)",              0.01, 1.0,   0.15, 0.01),
             ("max_iter", "Maks. İterasyon",             100,  10000, 5000, 100),
         ],
     },
@@ -64,7 +72,7 @@ ALGO_CONFIG = {
         "desc": "Sürü zekâsı; parçacıklar kişisel ve global en iyiye doğru hareket eder.",
         "runner": _run_pso,
         "params": [
-            ("pop_size", "Sürü Boyutu (pop_size)",   10,  100,  50,  5),
+            ("pop_size", "Sürü Boyutu (pop_size)",   10,  100,  30,  5),
             ("max_iter", "Maks. İterasyon",           50,  500,  150, 10),
             ("c1",       "Bilişsel Katsayı (c1)",     0.0, 4.0,  1.5, 0.1),
             ("c2",       "Sosyal Katsayı (c2)",       0.0, 4.0,  1.5, 0.1),
@@ -76,9 +84,9 @@ ALGO_CONFIG = {
         "desc": "Doğal seçilim; turnuva seçilimi, aritmetik çaprazlama ve mutasyon.",
         "runner": _run_ga,
         "params": [
-            ("pop_size",       "Popülasyon Boyutu (pop_size)", 10,  100, 50,  2),
+            ("pop_size",       "Popülasyon Boyutu (pop_size)", 10,  100, 40,  2),
             ("max_iter",       "Jenerasyon Sayısı",            20,  500, 100, 10),
-            ("crossover_rate", "Çaprazlama Oranı",             0.1, 1.0, 0.9, 0.05),
+            ("crossover_rate", "Çaprazlama Oranı",             0.1, 1.0, 0.8, 0.05),
             ("mutation_rate",  "Mutasyon Oranı",               0.0, 1.0, 0.1, 0.05),
         ],
     },
@@ -238,9 +246,197 @@ def render_algorithm_tab(algo_key):
 
 
 # =====================================================================
+#  MONTE CARLO YARDIMCILARI
+# =====================================================================
+def default_params(algo_key):
+    """ALGO_CONFIG içindeki slider varsayılanlarını parametre sözlüğü yapar."""
+    return {spec[0]: spec[4] for spec in ALGO_CONFIG[algo_key]["params"]}
+
+
+def _silent_run(runner, func, bounds, params):
+    """Algoritmanın print çıktısını bastırarak tek bir koşu yapar."""
+    with contextlib.redirect_stdout(io.StringIO()):
+        return runner(func, bounds, params)
+
+
+def monte_carlo(algo_key, benchmark_choice, n_runs, params):
+    """
+    Belirli bir (algoritma, benchmark) ikilisi için n_runs bağımsız koşu yapar.
+    'Hedefe yakınlık'  -> |f* - hedef| (en küçük = en iyi, en büyük = en kötü)
+    Ayrıca tüm koşuların ortalaması ve standart sapması hesaplanır.
+    """
+    cfg = BENCHMARK_CONFIG[benchmark_choice]
+    runner = ALGO_CONFIG[algo_key]["runner"]
+    target = cfg["target"]
+
+    fits = np.empty(n_runs)
+    positions = []
+    for k in range(n_runs):
+        bf, bp, _ = _silent_run(runner, cfg["func"], cfg["bounds"], params)
+        fits[k] = bf
+        positions.append(np.asarray(bp))
+
+    errors = np.abs(fits - target)          # hedefe uzaklık (f cinsinden)
+    best_idx = int(np.argmin(errors))       # en yakın  -> en iyi
+    worst_idx = int(np.argmax(errors))      # en uzak   -> en kötü
+
+    return {
+        "fits": fits,
+        "best_fit": float(fits[best_idx]),
+        "best_pos": positions[best_idx],
+        "best_err": float(errors[best_idx]),
+        "worst_fit": float(fits[worst_idx]),
+        "worst_pos": positions[worst_idx],
+        "worst_err": float(errors[worst_idx]),
+        "mean": float(fits.mean()),
+        "std": float(fits.std()),
+    }
+
+
+def run_all_monte_carlo(n_runs):
+    """Tüm (algoritma x benchmark) kombinasyonları için Monte Carlo çalıştırır."""
+    results = {}
+    for algo_key in ALGO_CONFIG:
+        p = default_params(algo_key)
+        for benchmark_choice in BENCHMARK_CONFIG:
+            results[(algo_key, benchmark_choice)] = monte_carlo(
+                algo_key, benchmark_choice, n_runs, p
+            )
+    return results
+
+
+def _fmt(v):
+    """Hem çok küçük hem normal değerleri okunaklı gösteren biçimleyici."""
+    return f"{v:.5g}"
+
+
+def build_box_figure(benchmark_choice, mc_results):
+    """Bir benchmark için tüm algoritmaların f* dağılımını kutu grafiğiyle gösterir."""
+    cfg = BENCHMARK_CONFIG[benchmark_choice]
+    palette = {"HS": "#4C9AFF", "PSO": "#36B37E", "GA": "#FFAB00"}
+    fig = go.Figure()
+    for algo_key in ALGO_CONFIG:
+        fits = mc_results[(algo_key, benchmark_choice)]["fits"]
+        fig.add_trace(go.Box(
+            y=fits,
+            name=ALGO_CONFIG[algo_key]["label"],
+            boxpoints="outliers",
+            marker_color=palette.get(algo_key, "#8993A4"),
+        ))
+    fig.add_hline(
+        y=cfg["target"], line_dash="dash", line_color="limegreen",
+        annotation_text="Hedef (f_min)", annotation_position="top left",
+    )
+    fig.update_layout(
+        height=420,
+        margin=dict(l=10, r=10, b=10, t=30),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#E6E8EB"),
+        yaxis_title="Bulunan f* (uygunluk değeri)",
+        showlegend=False,
+    )
+    return fig
+
+
+# =====================================================================
+#  SAYFA 1: BENCHMARK TESTLERİ
+# =====================================================================
+def page_benchmark():
+    st.title("🧠 Metasezgisel Optimizasyon Algoritmaları • Benchmark Testleri")
+    st.markdown(
+        "Aşağıdaki **sekmeler** arasında geçiş yaparak farklı optimizasyon "
+        "algoritmalarının (HS, PSO, GA) arama uzayını nasıl taradığını "
+        "karşılaştırabilirsiniz. Her sekmede benchmark fonksiyonunu ve algoritma "
+        "parametrelerini bağımsız olarak ayarlayabilirsiniz."
+    )
+
+    tab_keys = list(ALGO_CONFIG.keys())
+    tab_labels = [ALGO_CONFIG[k]["label"] for k in tab_keys]
+    tabs = st.tabs(tab_labels)
+    for tab, algo_key in zip(tabs, tab_keys):
+        with tab:
+            render_algorithm_tab(algo_key)
+
+
+# =====================================================================
+#  SAYFA 2: MONTE CARLO SİMÜLASYONLARI
+# =====================================================================
+def page_monte_carlo():
+    st.title("🎲 Monte Carlo Simülasyonları")
+    st.markdown(
+        "Her **algoritma** ve her **benchmark fonksiyonu** için çok sayıda "
+        "bağımsız koşu yapılır. Sonuçlar, ulaşmak istediğimiz çözüme "
+        "(_teorik global minimum_) olan yakınlığa göre değerlendirilir: "
+        "**en yakın = en iyi**, **en uzak = en kötü**. Ayrıca tüm koşuların "
+        "**ortalaması** ve **standart sapması** raporlanır."
+    )
+
+    ctrl1, ctrl2 = st.columns([2, 1])
+    with ctrl1:
+        n_runs = st.slider("Koşu (simülasyon) sayısı", 10, 500, 50, 10,
+                           key="mc_n_runs_slider")
+    with ctrl2:
+        st.write("")
+        st.write("")
+        run_mc = st.button("🚀 Monte Carlo'yu Çalıştır", use_container_width=True,
+                           key="mc_run_btn")
+
+    st.caption(
+        "Not: Her algoritma kendi **varsayılan** parametreleriyle çalıştırılır "
+        "(Benchmark Testleri sayfasındaki slider değerlerinden bağımsızdır)."
+    )
+
+    need = (
+        run_mc
+        or "mc_results" not in st.session_state
+        or st.session_state.get("mc_done_runs") != n_runs
+    )
+    if need:
+        total = len(ALGO_CONFIG) * len(BENCHMARK_CONFIG) * n_runs
+        with st.spinner(f"{total} koşu çalıştırılıyor... (lütfen bekleyin)"):
+            st.session_state.mc_results = run_all_monte_carlo(n_runs)
+            st.session_state.mc_done_runs = n_runs
+
+    mc = st.session_state.mc_results
+    done_runs = st.session_state.mc_done_runs
+    st.success(f"✅ Her (algoritma × benchmark) için **{done_runs}** bağımsız koşu tamamlandı.")
+
+    # Benchmark bazında sonuç tabloları + dağılım grafikleri
+    for benchmark_choice in BENCHMARK_CONFIG:
+        cfg = BENCHMARK_CONFIG[benchmark_choice]
+        st.markdown("---")
+        st.subheader(f"📊 {benchmark_choice}")
+        st.info(cfg["ideal_text"] + f" &nbsp;•&nbsp; **Hedef f_min:** {cfg['target']}")
+
+        rows = []
+        for algo_key in ALGO_CONFIG:
+            r = mc[(algo_key, benchmark_choice)]
+            rows.append({
+                "Algoritma": ALGO_CONFIG[algo_key]["label"],
+                "En İyi f* (en yakın)": _fmt(r["best_fit"]),
+                "En İyi (x, y)": f"({r['best_pos'][0]:.4f}, {r['best_pos'][1]:.4f})",
+                "En Kötü f* (en uzak)": _fmt(r["worst_fit"]),
+                "Ortalama f*": _fmt(r["mean"]),
+                "Std. Sapma": _fmt(r["std"]),
+            })
+        df = pd.DataFrame(rows)
+
+        col_tbl, col_box = st.columns([3, 2])
+        with col_tbl:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        with col_box:
+            st.plotly_chart(
+                build_box_figure(benchmark_choice, mc),
+                use_container_width=True,
+                key=f"mc_box_{benchmark_choice}",
+            )
+
+
+# =====================================================================
 #  SAYFA YAPILANDIRMASI
 # =====================================================================
-st.set_page_config(page_title="Metaheuristic Optimizasyon Benchmark", layout="wide")
+st.set_page_config(page_title="Metasezgisel Optimizasyon Benchmark", layout="wide")
 st.markdown(
     """
     <style>
@@ -249,19 +445,17 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.title("Metaheuristic Optimizasyon Algoritmaları • Benchmark Testleri")
-st.markdown(
-    "Aşağıdaki **sekmeler** arasında geçiş yaparak farklı optimizasyon "
-    "algoritmalarının (HS, PSO, GA) arama uzayını nasıl taradığını "
-    "karşılaştırabilirsiniz. Her sekmede benchmark fonksiyonunu ve algoritma "
-    "parametrelerini bağımsız olarak ayarlayabilirsiniz."
-)
 
-# --- Sekmeler (web tarayıcı sekmeleri gibi algoritma geçişi) ---
-tab_keys = list(ALGO_CONFIG.keys())
-tab_labels = [ALGO_CONFIG[k]["label"] for k in tab_keys]
-tabs = st.tabs(tab_labels)
+# --- Sayfa Yönlendirmesi (Navigation) ---
+with st.sidebar:
+    st.header("📁 Sayfalar")
+    page = st.radio(
+        "Görüntülenecek sayfayı seçin",
+        ["📊 Benchmark Testleri", "🎲 Monte Carlo Simülasyonları"],
+        key="page_nav",
+    )
 
-for tab, algo_key in zip(tabs, tab_keys):
-    with tab:
-        render_algorithm_tab(algo_key)
+if page == "📊 Benchmark Testleri":
+    page_benchmark()
+else:
+    page_monte_carlo()
