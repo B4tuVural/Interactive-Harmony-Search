@@ -73,7 +73,9 @@ def HarmonySearch(obj_function, bounds, HMS, r_accept, r_pa, bw, max_iter):
     return best_fitness, best_harmony, history
 
 
-
+# =====================================================================
+#  PARTICLE SWARM OPTIMIZATION (PSO)   ->  PSO.m karşılığı
+# =====================================================================
 def PSO(obj_function, bounds, pop_size, max_iter, c1, c2, w):
     '''
     pop_size : Sürü (parçacık) boyutu
@@ -137,6 +139,9 @@ def PSO(obj_function, bounds, pop_size, max_iter, c1, c2, w):
     return best_fitness, best_pos, history
 
 
+# =====================================================================
+#  GENETIC ALGORITHM (GA)   ->  GA.m karşılığı
+# =====================================================================
 def _tournament_selection(fitness, k=3):
     # Turnuva Seçilimi (Tournament Selection)
     rand_idx = np.random.randint(0, len(fitness), k)
